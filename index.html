@@ -873,7 +873,7 @@ function renderAdmin(el) {
   });
   
   // Register unit
-  document.getElementById("regUnitBtn")?.addEventListener("click", ()=>{
+  document.getElementById("regUnitBtn")?.addEventListener("click", async ()=>{
     const f = state.adminForm;
     if(!f.vin.trim()) return;
     const shortId = genShortId(f.type, state.vehicles);
@@ -886,6 +886,27 @@ function renderAdmin(el) {
     };
     const updated = [...state.vehicles, vehicle];
     lsSetJSON("vehicles", updated);
+    
+    // Push to Google Sheet
+    if(state.scriptUrl) {
+      try {
+        const eqLabel = EQ_TYPES.find(t=>t.id===f.type)?.label || f.type;
+        await fetch(state.scriptUrl, {
+          method:"POST",
+          body: JSON.stringify({
+            action: "register_vehicle",
+            short_id: shortId,
+            type: eqLabel,
+            year: f.year.trim(),
+            make: f.make.trim(),
+            model: f.model.trim(),
+            vin: f.vin.trim().toUpperCase(),
+            nickname: f.desc.trim() || `${f.year} ${f.make} ${f.model}`.trim(),
+          }),
+        });
+      } catch(err) { console.warn("Failed to push vehicle to Sheet:", err); }
+    }
+    
     setState({
       vehicles:updated,
       adminForm:{type:"truck",vin:"",year:"",make:"",model:"",desc:""},
